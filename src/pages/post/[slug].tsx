@@ -1,29 +1,18 @@
+import Head from 'next/head';
 import { GetStaticPaths, GetStaticProps } from 'next';
-import Link from 'next/link';
-import { useRouter } from 'next/router';
-
-import { RichText } from 'prismic-dom';
+import { FiCalendar, FiUser, FiClock } from 'react-icons/fi';
 import Prismic from '@prismicio/client';
-
 import { format } from 'date-fns';
 import ptBR from 'date-fns/locale/pt-BR';
-
-import { FiCalendar, FiUser, FiClock } from 'react-icons/fi';
-
+import { useRouter } from 'next/router';
+import { RichText } from 'prismic-dom';
 import Header from '../../components/Header';
-import { Comments } from '../../components/Coments';
-
 import { getPrismicClient } from '../../services/prismic';
-
-import commonStyles from '../../styles/common.module.scss';
 import styles from './post.module.scss';
 
 interface Post {
   first_publication_date: string | null;
-  last_publication_date: string | null;
-  uid: string;
   data: {
-    uid: string;
     title: string;
     banner: {
       url: string;
@@ -33,7 +22,6 @@ interface Post {
       heading: string;
       body: {
         text: string;
-        type: string;
       }[];
     }[];
   };
@@ -41,213 +29,116 @@ interface Post {
 
 interface PostProps {
   post: Post;
-  prevPost: Post | undefined;
-  nextPost: Post | undefined;
-  wasEdited: boolean;
 }
 
-export default function Post({
-  post,
-  nextPost,
-  prevPost,
-  wasEdited,
-}: PostProps) {
+export default function Post({ post }: PostProps): JSX.Element {
   const router = useRouter();
-
-  const readTime = post.data.content.reduce((sumTotal, content) => {
-    const textTime = RichText.asText(content.body).split(' ').length;
-    return Math.ceil(sumTotal + textTime / 200);
-  }, 0);
-
   if (router.isFallback) {
-    return <p>Carregando...</p>;
+    return <div>Carregando...</div>;
   }
-
+  const count = post.data?.content.reduce((acc, item) => {
+    const section = RichText.asText(item.body).split(' ').length;
+    return acc + section;
+  }, 0);
+  const readingTime = Math.ceil(count / 200);
   return (
     <>
-      <div className={commonStyles.container}>
-        <div className={commonStyles.containerHeader}>
-          <Header pageTitle={post.data.title} />
-        </div>
-      </div>
-
-      <img
-        className={styles.banner}
-        src={post.data.banner.url}
-        alt={post.data.title}
-      />
-
-      <div className={`${commonStyles.container} ${styles.mainPost}`}>
-        <main className={commonStyles.content}>
-          <h1>{post.data.title}</h1>
-
-          <section className={`${commonStyles.info} ${styles.infoPost}`}>
-            <div>
-              <FiCalendar color="#BBBBBB" />
-              <time>
-                {format(new Date(post.first_publication_date), 'dd MMM yyyy', {
-                  locale: ptBR,
-                })}
-              </time>
-            </div>
-            <div>
-              <FiUser color="#BBBBBB" />
-              <span>{post.data.author}</span>
-            </div>
-            <div>
-              <FiClock color="#BBBBBB" />
-              <span>{readTime} min</span>
-            </div>
-          </section>
-
-          {wasEdited && (
-            <section className={commonStyles.info}>
+      <Header />
+      <Head>
+        <title>{post.data.title} | spacetraveling</title>
+      </Head>
+      <main className={styles.container}>
+        <div className={styles.content}>
+          {post.data.banner?.url && (
+            <div
+              className={styles.banner}
+              style={{ backgroundImage: `url(${post.data.banner?.url})` }}
+            />
+          )}
+          <header>
+            <h1>{post?.data.title}</h1>
+            <div className={styles.info}>
               <div>
+                <FiCalendar />
                 <span>
-                  * editado em{' '}
                   {format(
                     new Date(post.first_publication_date),
-                    "dd MMM yyyy, 'às' HH:mm:ss",
+                    'dd MMM yyyy',
                     {
                       locale: ptBR,
                     }
                   )}
                 </span>
               </div>
-            </section>
-          )}
-
-          {post.data.content.map(content => (
-            <article key={content.heading}>
-              <strong>{content?.heading}</strong>
-
-              {content.body.map((body, index) => {
-                const key = index;
-
-                return body.type === 'list-item' ? (
-                  <ul key={key}>
-                    <li>{body.text}</li>
-                  </ul>
-                ) : (
-                  <p key={key}>{body.text}</p>
-                );
-              })}
-            </article>
-          ))}
-
-          <div className={styles.predictPosts}>
-            <div className={`${styles.postItem} ${styles.prev}`}>
-              {prevPost && (
-                <>
-                  <div className={styles.title}>{prevPost.data.title}</div>
-                  <Link key={prevPost.uid} href={`/post/${prevPost.uid}`}>
-                    <a>Post anterior</a>
-                  </Link>
-                </>
-              )}
+              <div>
+                <FiUser />
+                <span>{post.data.author}</span>
+              </div>
+              <div>
+                <FiClock />
+                <span>{`${readingTime} min`}</span>
+              </div>
             </div>
-            <div className={`${styles.postItem} ${styles.next}`}>
-              {nextPost && (
-                <>
-                  <div className={styles.title}>{nextPost.data.title}</div>
-                  <Link key={prevPost.uid} href={`/post/${nextPost.uid}`}>
-                    <a>Próximo post</a>
-                  </Link>
-                </>
-              )}
-            </div>
-          </div>
-        </main>
-
-        <footer className={`${commonStyles.content} ${styles.postFooter}`}>
-          <Comments />
-        </footer>
-      </div>
+          </header>
+          <article>
+            {post?.data.content.map(content => (
+              <div key={Math.random().toString()} className={styles.postBody}>
+                <h2>{content.heading}</h2>
+                {content.body.map(item => (
+                  <p key={Math.random().toString()}>{item.text}</p>
+                ))}
+              </div>
+            ))}
+          </article>
+        </div>
+      </main>
     </>
   );
 }
 
 export const getStaticPaths: GetStaticPaths = async () => {
   const prismic = getPrismicClient();
-  const postsResponse = await prismic.query(
-    [Prismic.predicates.at('document.type', 'post')],
+  const posts = await prismic.query(
+    [Prismic.Predicates.at('document.type', 'pos')],
     {
       fetch: ['post.title', 'post.subtitle', 'post.author'],
+      pageSize: 3,
     }
   );
-
-  const slugs = postsResponse.results.map(slug => slug.uid);
-
+  const paths = posts.results.map(post => {
+    return {
+      params: {
+        slug: post.uid,
+      },
+    };
+  });
   return {
-    paths: slugs.map(slug => {
-      return {
-        params: { slug },
-      };
-    }),
+    paths,
     fallback: true,
   };
 };
 
 export const getStaticProps: GetStaticProps = async ({ params }) => {
-  const { slug } = params;
-
   const prismic = getPrismicClient();
-  const response = await prismic.getByUID('post', String(slug), {});
-
-  const wasEdited =
-    response.last_publication_date > response.first_publication_date;
-
-  const nextPost = await prismic.query(
-    [Prismic.Predicates.at('document.type', 'post')],
-    {
-      pageSize: 1,
-      after: `${response.id}`,
-      orderings: '[document.first_publication_date]',
-    }
-  );
-
-  const prevPost = await prismic.query(
-    [Prismic.Predicates.at('document.type', 'post')],
-    {
-      pageSize: 1,
-      after: `${response.id}`,
-      orderings: '[document.first_publication_date desc]',
-    }
-  );
-
+  const response = await prismic.getByUID('pos', String(params.slug), {
+    fetch: ['post.title', 'post.banner', 'post.author', 'post.content'],
+  });
   const post = {
     uid: response.uid,
     first_publication_date: response.first_publication_date,
-    last_publication_date: response.last_publication_date,
     data: {
       title: response.data.title,
       subtitle: response.data.subtitle,
-      banner: {
-        url: response.data.banner.url,
-      },
       author: response.data.author,
-      content: response.data.content.map(content => {
-        return {
-          heading: content.heading,
-          body: content.body.map(body => {
-            return {
-              text: body.text,
-              type: body.type,
-              spans: [...body.spans],
-            };
-          }),
-        };
-      }),
+      banner: {
+        url: response.data.banner.url ?? '',
+      },
+      content: response.data.content,
     },
   };
-
   return {
     props: {
       post,
-      prevPost: prevPost?.results[0] || null,
-      nextPost: nextPost?.results[0] || null,
-      wasEdited,
     },
-    revalidate: 3600, // 1 hour
   };
 };

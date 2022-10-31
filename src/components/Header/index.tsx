@@ -1,21 +1,14 @@
 import Link from 'next/link';
-import Head from 'next/head';
-
-import { IHeader } from './@interfaces';
 import styles from './header.module.scss';
 
-export default function Header({ pageTitle }: IHeader) {
+export default function Header(): JSX.Element {
   return (
-    <header className={styles.headerContainer}>
-      <Head>
-        <title>{pageTitle} | spacetraveling</title>
-      </Head>
-
-      <Link href="/">
-        <a>
+    <Link href="/">
+      <header className={styles.container}>
+        <div className={styles.content}>
           <img src="/images/logo.svg" alt="logo" />
-        </a>
-      </Link>
-    </header>
+        </div>
+      </header>
+    </Link>
   );
 }
