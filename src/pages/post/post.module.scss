@@ -1,60 +1,73 @@
-.container {
+img.banner {
+  margin: 2rem auto 0;
   width: 100%;
+}
 
-  img {
-    width: 100%;
-    height: 440px;
-    object-fit: cover;
+.mainPost {
+  padding: 80px 0 !important;
+
+  main {
+    h1 {
+      font-size: 2.5rem;
+    }
   }
 
   article {
-    margin-top: 3rem;
-    width: 100%;
+    margin: 3rem auto 0;
 
-    h1 {
-      color: var(--heading);
-      font-size: 3rem;
-      line-height: 3.625rem;
-      letter-spacing: -0.5px;
+    strong {
+      font-size: 2.5rem;
+      line-height: 1.5rem;
     }
 
-    .data {
+    p {
+      color: var(--info);
       margin-top: 1.5rem;
+      text-align: justify;
+    }
 
-      display: flex;
-
-      .author,
-      .readTime {
-        margin-left: 26px;
-      }
-
-      time,
-      .author,
-      .readTime {
-        display: flex;
-        align-items: center;
-
-        font-size: 0.875rem;
-
-        svg {
-          margin-right: 10px;
-        }
-      }
+    ul {
+      color: var(--info);
+      margin-top: 1.5rem;
+      text-align: justify;
     }
   }
 }
 
-.content {
-  margin: 4rem 0;
-  width: 100%;
+.predictPosts {
+  display: flex;
+  flex-wrap: wrap;
+  flex: 1 1 auto;
+  justify-content: space-between;
 
-  h2 {
-    margin-bottom: 2rem;
-    font-size: 2rem;
-    line-height: 2.125rem;
-  }
+  border-top: 1px solid rgba(#D7D7D7, 10%);
 
-  p {
-    margin-bottom: 0.5rem;
+  margin-top: 2rem;
+  padding: 4rem 0;
+
+  .postItem {
+    flex-basis: 0;
+    flex-grow: 1;
+    max-width: 100%;
+    font-size: 1.1rem;
+  a {
+    color: #FF57B2;
+    font-weight: bold;
+    font-size: 1rem;
   }
+  &.prev {
+    text-align: left;
+  }
+  &.next {
+    text-align: right;
+  }
+  }
+}
+
+.infoPost {
+  padding: 24px 0;
+}
+
+.postFooter {
+  margin: 32px 0;
 }

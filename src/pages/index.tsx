@@ -1,17 +1,18 @@
 import { GetStaticProps } from 'next';
 import Link from 'next/link';
+
 import Prismic from '@prismicio/client';
+
+import { useState } from 'react';
 import { format } from 'date-fns';
-import ptBR from 'date-fns/locale/pt-BR';
-import Head from 'next/head';
-
-import { FiCalendar, FiUser } from 'react-icons/fi';
-
+import { ptBR } from 'date-fns/locale';
 import { getPrismicClient } from '../services/prismic';
+
+import Header from '../components/Header';
+import HomePost from '../components/HomePost';
 
 import commonStyles from '../styles/common.module.scss';
 import styles from './home.module.scss';
-import { useState } from 'react';
 
 interface Post {
   uid?: string;
@@ -30,111 +31,122 @@ interface PostPagination {
 
 interface HomeProps {
   postsPagination: PostPagination;
+  preview?: boolean;
 }
 
-export default function Home({ postsPagination }: HomeProps) {
-  const { next_page, results } = postsPagination;
-  const [posts, setPosts] = useState<Post[]>(results);
-  const [nextPage, setNextPage] = useState<string>(next_page);
+export default function Home({ postsPagination, preview = false }: HomeProps) {
+  const [nextPage, setNextPage] = useState(postsPagination.next_page);
+  const [results, setResults] = useState<Post[]>(
+    postsPagination.results.map(result => {
+      return {
+        ...result,
+        first_publication_date: format(
+          new Date(result.first_publication_date),
+          'dd MMM yyyy',
+          {
+            locale: ptBR,
+          }
+        ),
+      };
+    })
+  );
 
-  function loadPosts() {
-    if (nextPage) {
-      fetch(nextPage)
-        .then(response => response.json())
-        .then(data => {
-          const newPosts = data.results.map((post: Post) => ({
+  function handleNextPage(): void {
+    fetch(nextPage).then(response => {
+      response.json().then(responsePrismic => {
+        setNextPage(responsePrismic.next_page);
+
+        const posts = responsePrismic.results.map(post => {
+          return {
             uid: post.uid,
-            first_publication_date: post.first_publication_date,
+            first_publication_date: format(
+              new Date(post.first_publication_date),
+              'dd MMM yyyy',
+              {
+                locale: ptBR,
+              }
+            ),
             data: {
               title: post.data.title,
               subtitle: post.data.subtitle,
               author: post.data.author,
             },
-          }));
-
-          setNextPage(data.next_page);
-          setPosts([...posts, ...newPosts]);
-        })
-        .catch(() => {
-          alert('Erro na aplicação!');
+          };
         });
-    }
-  }
 
-  function handleLoadPostsClick() {
-    loadPosts();
+        setResults([...results, ...posts]);
+      });
+    });
   }
 
   return (
-    <>
-      <Head>
-        <title>spacetraveling</title>
-      </Head>
-      <main className={`${commonStyles.container} ${styles.container}`}>
-        <header className={styles.header}>
-          <img src="Logo.svg" alt="logo" />
-        </header>
-        {posts.map(post => (
-          <Link key={post.uid} href={`/post/${post.uid}`}>
-            <a>
-              <strong>{post.data.title}</strong>
-              <p>{post.data.subtitle}</p>
-              <div className={styles.data}>
-                <time>
-                  <FiCalendar size={24} />
-                  {format(new Date(post.first_publication_date), 'dd MMM u', {
-                    locale: ptBR,
-                  })}
-                </time>
-                <div className={styles.author}>
-                  <FiUser size={24} />
-                  {post.data.author}
-                </div>
-              </div>
-            </a>
-          </Link>
+    <div className={commonStyles.container}>
+      <div className={commonStyles.containerHeader}>
+        <Header pageTitle="Home" />
+      </div>
+
+      <main className={commonStyles.content}>
+        {results.map(post => (
+          <HomePost
+            key={post.uid}
+            slug={post.uid}
+            data={post.data}
+            first_publication_date={post.first_publication_date}
+          />
         ))}
-        {nextPage && (
-          <strong className={styles.loadPosts} onClick={handleLoadPostsClick}>
-            Carregar mais posts
-          </strong>
-        )}
       </main>
-    </>
+
+      {postsPagination.next_page !== null && (
+        <footer className={styles.homeFooter}>
+          <button type="button" onClick={handleNextPage}>
+            Carregar mais posts
+          </button>
+        </footer>
+      )}
+
+      {preview && (
+        <aside>
+          <Link href="/api/exit-preview">
+            <a>Sair do modo Preview</a>
+          </Link>
+        </aside>
+      )}
+    </div>
   );
 }
 
-export const getStaticProps: GetStaticProps = async () => {
+export const getStaticProps: GetStaticProps = async ({
+  preview = false,
+  previewData,
+}) => {
   const prismic = getPrismicClient();
+
   const postsResponse = await prismic.query(
-    [Prismic.predicates.at('document.type', 'posts')],
+    [Prismic.predicates.at('document.type', 'post')],
     {
-      fetch: ['posts.title', 'posts.subtitle', 'posts.author'],
-      pageSize: 5,
+      ref: previewData?.ref ?? null,
     }
   );
 
-  const { next_page, results } = postsResponse;
-
-  const posts: Post[] = results.map(post => ({
-    uid: post.uid,
-    first_publication_date: post.first_publication_date,
-    data: {
-      title: post.data.title,
-      subtitle: post.data.subtitle,
-      author: post.data.author,
-    },
-  }));
-
-  const timeToRevalidate = 60 * 3;
+  const posts = postsResponse.results.map(post => {
+    return {
+      uid: post.uid,
+      first_publication_date: post.first_publication_date,
+      data: {
+        author: post.data.author,
+        subtitle: post.data.subtitle,
+        title: post.data.title,
+      },
+    } as Post;
+  });
 
   return {
     props: {
       postsPagination: {
-        next_page: next_page,
+        next_page: postsResponse.next_page,
         results: posts,
       },
+      preview,
     },
-    revalidate: timeToRevalidate,
   };
 };
