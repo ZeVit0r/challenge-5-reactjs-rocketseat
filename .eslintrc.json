@@ -24,7 +24,12 @@
     "ecmaVersion": 12,
     "sourceType": "module"
   },
-  "plugins": ["react", "react-hooks", "@typescript-eslint", "prettier"],
+  "plugins": [
+    "react",
+    "react-hooks",
+    "@typescript-eslint",
+    "prettier"
+  ],
   "rules": {
     "camelcase": "off",
     "import/no-duplicates": "off",
@@ -35,9 +40,17 @@
     "jsx-a11y/anchor-is-valid": [
       "error",
       {
-        "components": ["Link"],
-        "specialLink": ["hrefLeft", "hrefRight"],
-        "aspects": ["invalidHref", "preferButton"]
+        "components": [
+          "Link"
+        ],
+        "specialLink": [
+          "hrefLeft",
+          "hrefRight"
+        ],
+        "aspects": [
+          "invalidHref",
+          "preferButton"
+        ]
       }
     ],
     "react/jsx-one-expression-per-line": "off",
@@ -47,7 +60,9 @@
     "react/jsx-filename-extension": [
       1,
       {
-        "extensions": [".tsx"]
+        "extensions": [
+          ".tsx"
+        ]
       }
     ],
     "import/prefer-default-export": "off",
@@ -62,7 +77,7 @@
     "@typescript-eslint/explicit-function-return-type": [
       "error",
       {
-        "allowExpressions": "off"
+        "allowExpressions": true
       }
     ],
     "@typescript-eslint/camelcase": "off"

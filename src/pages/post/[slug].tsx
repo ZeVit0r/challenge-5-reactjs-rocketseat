@@ -1,26 +1,25 @@
 import { GetStaticPaths, GetStaticProps } from 'next';
+import { Fragment } from 'react';
 import Head from 'next/head';
-
-import { FiCalendar, FiUser, FiClock } from 'react-icons/fi';
-
 import Prismic from '@prismicio/client';
+import { RichText } from 'prismic-dom';
+import { format } from 'date-fns';
+import ptBR from 'date-fns/locale/pt-BR';
+
+import { FiCalendar, FiClock, FiUser } from 'react-icons/fi';
 
 import { getPrismicClient } from '../../services/prismic';
 
+import Header from '../../components/Header';
+
 import commonStyles from '../../styles/common.module.scss';
 import styles from './post.module.scss';
-
-import Header from '../../components/Header';
-import { RichText } from 'prismic-dom';
-
-import { formatDate } from '../../utils';
 import { useRouter } from 'next/router';
 
 interface Post {
   first_publication_date: string | null;
   data: {
     title: string;
-    subtitle: string;
     banner: {
       url: string;
     };
@@ -39,66 +38,62 @@ interface PostProps {
 }
 
 export default function Post({ post }: PostProps) {
-  const router = useRouter();
+  const { isFallback } = useRouter();
 
-  if (router.isFallback) {
-    return <h1>Carregando...</h1>;
+  if (isFallback) {
+    return <span>Carregando...</span>;
   }
 
-  const totalWords = post.data.content.reduce(
-    (totalContent, currentContent) => {
-      const headingWords = currentContent.heading?.split(' ').length || 0;
+  const minutesToRead = post.data.content.reduce((acc, content) => {
+    function countWords(str: string) {
+      return str.trim().split(/\s+/).length;
+    }
 
-      const bodyWords = currentContent.body.reduce((totalBody, currentBody) => {
-        const textWords = currentBody.text.split(' ').length;
-        return totalBody + textWords;
-      }, 0);
+    acc += countWords(content.heading) / 200;
+    acc += countWords(RichText.asText(content.body)) / 200;
 
-      return totalContent + headingWords + bodyWords;
-    },
-    0
-  );
-
-  const timeEstimmed = Math.ceil(totalWords / 200);
+    return Math.ceil(acc);
+  }, 0);
 
   return (
     <>
       <Head>
-        <title>{post.data.title} | spacetraveling</title>
+        <title>spacetraveling - {post.data.title}</title>
       </Head>
-
       <Header />
-
-      <img src="/teste.png" alt="banner" className={styles.banner} />
-      <main className={commonStyles.container}>
-        <article className={styles.post}>
+      <main className={styles.container}>
+        <img src={post.data.banner.url} alt={post.data.title} />
+        <article className={commonStyles.container}>
           <h1>{post.data.title}</h1>
-          <div className={commonStyles.info}>
+          <div className={styles.data}>
             <time>
-              <FiCalendar />
-              {formatDate(post.first_publication_date)}
+              <FiCalendar size={24} />
+              {format(new Date(post.first_publication_date), 'dd MMM u', {
+                locale: ptBR,
+              })}
             </time>
-            <span>
-              <FiUser />
+            <div className={styles.author}>
+              <FiUser size={24} />
               {post.data.author}
-            </span>
-            <time>
-              <FiClock />
-              {timeEstimmed} min
-            </time>
+            </div>
+            <div className={styles.readTime}>
+              <FiClock size={24} />
+              {minutesToRead} min
+            </div>
           </div>
-          {post.data.content.map(content => {
-            return (
-              <section key={content.heading} className={styles.postContent}>
+          <div className={styles.content}>
+            {post.data.content.map((content, index) => (
+              <Fragment key={index}>
                 <h2>{content.heading}</h2>
                 <div
+                  key={index}
                   dangerouslySetInnerHTML={{
                     __html: RichText.asHtml(content.body),
                   }}
                 ></div>
-              </section>
-            );
-          })}
+              </Fragment>
+            ))}
+          </div>
         </article>
       </main>
     </>
@@ -107,17 +102,18 @@ export default function Post({ post }: PostProps) {
 
 export const getStaticPaths: GetStaticPaths = async () => {
   const prismic = getPrismicClient();
-  const posts = await prismic.query([
-    Prismic.Predicates.at('document.type', 'posts'),
-  ]);
+  const posts = await prismic.query(
+    [Prismic.predicates.at('document.type', 'posts')],
+    {
+      fetch: ['posts.title', 'posts.banner', 'posts.author', 'posts.content'],
+    }
+  );
 
-  const paths = posts.results.map(post => {
-    return {
-      params: {
-        slug: post.uid,
-      },
-    };
-  });
+  const paths = posts.results.map(result => ({
+    params: {
+      slug: result.uid,
+    },
+  }));
 
   return {
     paths,
@@ -125,33 +121,32 @@ export const getStaticPaths: GetStaticPaths = async () => {
   };
 };
 
-export const getStaticProps: GetStaticProps = async context => {
+export const getStaticProps: GetStaticProps = async ({ params }) => {
+  const { slug } = params;
+
   const prismic = getPrismicClient();
-  const { slug } = context.params;
   const response = await prismic.getByUID('posts', String(slug), {});
 
   const post = {
-    uid: response.uid,
     first_publication_date: response.first_publication_date,
     data: {
       title: response.data.title,
-      subtitle: response.data.subtitle,
       banner: {
         url: response.data.banner.url,
       },
       author: response.data.author,
-      content: response.data.content.map(content => {
-        return {
-          heading: content.heading,
-          body: [...content.body],
-        };
-      }),
+      content: response.data.content,
+      subtitle: response.data.subtitle,
     },
+    uid: response.uid,
   };
+
+  const timeToRevalidate = 60;
 
   return {
     props: {
       post,
     },
+    revalidate: timeToRevalidate,
   };
 };
